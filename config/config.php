@@ -1,79 +1,65 @@
 <?php
 /**
  * config/config.php
+ * ------------------------------------------------------------------
  * Konfigurasi utama Website Sekolah.
- * Semua pengaturan sensitif sebaiknya di-override via environment variable.
+ * Semua konstanta global, path, dan kredensial database didefinisikan
+ * di sini agar mudah dipindahkan antar environment.
+ * ------------------------------------------------------------------
  */
+
 declare(strict_types=1);
 
-/* =========================================================
- | 1. MODE APLIKASI
- * ========================================================= */
-define('APP_ENV', getenv('APP_ENV') ?: 'production'); // production | development
-define('APP_DEBUG', APP_ENV === 'development');
+/* -----------------------------------------------------------------
+ | 1. Environment
+ * ----------------------------------------------------------------- */
+define('APP_ENV', 'development');          // 'development' | 'production'
+define('APP_NAME', 'Website Sekolah');
 
-if (APP_DEBUG) {
-    error_reporting(E_ALL);
-    ini_set('display_errors', '1');
-} else {
-    error_reporting(E_ALL & ~E_DEPRECATED & ~E_NOTICE);
-    ini_set('display_errors', '0');
-}
+/* -----------------------------------------------------------------
+ | 2. Path Aplikasi
+ * ----------------------------------------------------------------- */
+define('APP_ROOT', dirname(__DIR__));      // root folder project
+define('APP_INCLUDES', APP_ROOT . '/includes');
+define('APP_UPLOADS', APP_ROOT . '/uploads');
+define('UPLOAD_PATH', APP_UPLOADS);        // path fisik
+define('UPLOAD_URL', 'uploads');           // path relatif untuk URL
+define('UPLOAD_MAX_SIZE', 2 * 1024 * 1024); // 2 MB
+define('UPLOAD_ALLOWED_EXT', ['jpg', 'jpeg', 'png', 'webp']);
+define('UPLOAD_ALLOWED_MIME', ['image/jpeg', 'image/png', 'image/webp']);
 
-date_default_timezone_set('Asia/Jakarta');
-
-/* =========================================================
- | 2. IDENTITAS SEKOLAH (fallback bila data DB kosong)
- * ========================================================= */
-define('APP_NAME', 'SD Negeri 1 Nusantara');
-define('APP_SHORT_NAME', 'SDN 1 Nusantara');
-define('APP_TAGLINE', 'Berprestasi, Berkarakter, Berbudaya');
-define('APP_EMAIL', 'info@sdn1nusantara.sch.id');
-define('APP_PHONE', '(021) 1234-5678');
-define('APP_ADDRESS', 'Jl. Pendidikan No. 123, Kec. Nusantara, Kota Nusantara 12345');
-
-/* =========================================================
- | 3. KONFIGURASI DATABASE (PDO / MySQL)
- * ========================================================= */
-define('DB_HOST', getenv('DB_HOST') ?: '127.0.0.1');
-define('DB_PORT', getenv('DB_PORT') ?: '3306');
-define('DB_NAME', getenv('DB_NAME') ?: 'sekolah');
-define('DB_USER', getenv('DB_USER') ?: 'root');
-define('DB_PASS', getenv('DB_PASS') !== false ? getenv('DB_PASS') : '');
-define('DB_CHARSET', 'utf8mb4');
-
-/* =========================================================
- | 4. BASE URL
- | Dihitung otomatis agar dapat berjalan di root domain
- | maupun di sub-folder (mis. http://localhost/sekolah).
- * ========================================================= */
+/* -----------------------------------------------------------------
+ | 3. Base URL (auto-detect, bisa di-override manual)
+ * ----------------------------------------------------------------- */
 if (!defined('BASE_URL')) {
-    $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
-    $host   = $_SERVER['HTTP_HOST'] ?? 'localhost';
+    $scheme = 'http';
 
-    $scriptName = str_replace('\\', '/', $_SERVER['SCRIPT_NAME'] ?? '/index.php');
-    $dir        = rtrim(str_replace('\\', '/', dirname($scriptName)), '/');
+    if (!empty($_SERVER['HTTPS']) && strtolower((string) $_SERVER['HTTPS']) !== 'off') {
+        $scheme = 'https';
+    } elseif (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https') {
+        $scheme = 'https';
+    } elseif (($_SERVER['SERVER_PORT'] ?? '') === '443') {
+        $scheme = 'https';
+    }
 
-    // Jika file dijalankan dari dalam folder /admin, naik satu level.
-    $dir = preg_replace('#/admin$#', '', $dir);
-    // Jika file dijalankan dari dalam folder /includes, naik satu level.
-    $dir = preg_replace('#/includes$#', '', $dir);
+    $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
 
-    define('BASE_URL', $scheme . '://' . $host . $dir);
+    $basePath = '';
+    if (!empty($_SERVER['DOCUMENT_ROOT'])) {
+        $docRoot = str_replace('\\', '/', rtrim((string) $_SERVER['DOCUMENT_ROOT'], '/'));
+        $appRoot = str_replace('\\', '/', APP_ROOT);
+
+        if ($docRoot !== '' && strpos($appRoot, $docRoot) === 0) {
+            $basePath = substr($appRoot, strlen($docRoot));
+        }
+    }
+
+    define('BASE_URL', $scheme . '://' . $host . rtrim($basePath, '/') . '/');
 }
 
-/* =========================================================
- | 5. PATH & UPLOAD
- * ========================================================= */
-define('ROOT_PATH', dirname(__DIR__));
-define('UPLOAD_PATH', ROOT_PATH . '/assets/uploads');
-define('UPLOAD_URL', BASE_URL . '/assets/uploads');
-define('UPLOAD_MAX_BYTES', 2 * 1024 * 1024); // 2 MB
-define('UPLOAD_ALLOWED_EXT', ['jpg', 'jpeg', 'png', 'webp', 'gif']);
-define('UPLOAD_ALLOWED_MIME', ['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
-
-/* =========================================================
- | 6. PAGINATION
- * ========================================================= */
-define('PER_PAGE_BERITA', 6);
-define('PER_PAGE_ADMIN', 10);
+/* -----------------------------------------------------------------
+ | 4. Identitas Situs
+ * ----------------------------------------------------------------- */
+define('SITE_NAME', 'SD Negeri 1 Nusantara');
+define('SITE_TAGLINE', 'Berprestasi, Berkarakter, Berbudaya');
+define('SITE_EMAIL',
