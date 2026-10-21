@@ -33,4 +33,27 @@ jobs:
         run: |
           grep -qiE '^[[:space:]]*Procedure[[:space:]]+Run[[:space:]]*;' Scripts/MainUnit.pas
 
-      - name: Validate DelphiScript syntax (Begin
+      - name: Validate DelphiScript syntax (Begin/End balance)
+        run: |
+          python - <<'PY'
+          import re, sys, pathlib
+
+          files = ["Scripts/MainUnit.pas", "Scripts/Utils.pas"]
+          ok = True
+
+          for f in files:
+              text = pathlib.Path(f).read_text(encoding="utf-8", errors="ignore")
+              # buang komentar { ... } dan // ...
+              text = re.sub(r"\{.*?\}", "", text, flags=re.S)
+              text = re.sub(r"//[^\n]*", "", text)
+
+              begins = len(re.findall(r"\bBegin\b", text, flags=re.I))
+              ends   = len(re.findall(r"\bEnd\b",   text, flags=re.I))
+
+              print(f"{f}: Begin={begins} End={ends}")
+              if begins != ends:
+                  print(f"  -> MISMATCH pada {f}")
+                  ok = False
+
+          sys.exit(0 if ok else 1)
+          PY
