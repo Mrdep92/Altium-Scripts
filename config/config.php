@@ -1,109 +1,79 @@
 <?php
+/**
+ * config/config.php
+ * Konfigurasi utama Website Sekolah.
+ * Semua pengaturan sensitif sebaiknya di-override via environment variable.
+ */
 declare(strict_types=1);
 
 /* =========================================================
-   KONFIGURASI DASAR APLIKASI
-   ========================================================= */
+ | 1. MODE APLIKASI
+ * ========================================================= */
+define('APP_ENV', getenv('APP_ENV') ?: 'production'); // production | development
+define('APP_DEBUG', APP_ENV === 'development');
 
-define('APP_NAME', 'SMP Negeri 1 Nusantara');
-define('APP_TAGLINE', 'Unggul dalam Prestasi, Berakhlak Mulia');
+if (APP_DEBUG) {
+    error_reporting(E_ALL);
+    ini_set('display_errors', '1');
+} else {
+    error_reporting(E_ALL & ~E_DEPRECATED & ~E_NOTICE);
+    ini_set('display_errors', '0');
+}
 
-// --- Konfigurasi Database (ubah sesuai server Anda) ---
-define('DB_HOST', 'localhost');
-define('DB_PORT', '3306');
-define('DB_NAME', 'sekolah_db');
-define('DB_USER', 'root');
-define('DB_PASS', '');
-define('DB_CHARSET', 'utf8mb4');
-
-// --- Path & Upload ---
-define('APP_ROOT', dirname(__DIR__));
-define('UPLOAD_PATH', APP_ROOT . DIRECTORY_SEPARATOR . 'assets' . DIRECTORY_SEPARATOR . 'img' . DIRECTORY_SEPARATOR . 'uploads');
-define('MAX_UPLOAD_SIZE', 2 * 1024 * 1024); // 2 MB
-define('ALLOWED_MIME', ['image/jpeg', 'image/png', 'image/gif', 'image/webp']);
-
-// --- Zona waktu ---
 date_default_timezone_set('Asia/Jakarta');
 
-// --- Base URL otomatis (mendukung subfolder) ---
-$__docRoot = isset($_SERVER['DOCUMENT_ROOT']) ? str_replace('\\', '/', (string) realpath($_SERVER['DOCUMENT_ROOT'])) : '';
-$__appRoot = str_replace('\\', '/', (string) realpath(APP_ROOT));
-$__base    = '';
-if ($__docRoot !== '' && strpos($__appRoot, $__docRoot) === 0) {
-    $__base = substr($__appRoot, strlen($__docRoot));
-}
-define('BASE_URL', rtrim(str_replace('\\', '/', $__base), '/'));
-unset($__docRoot, $__appRoot, $__base);
+/* =========================================================
+ | 2. IDENTITAS SEKOLAH (fallback bila data DB kosong)
+ * ========================================================= */
+define('APP_NAME', 'SD Negeri 1 Nusantara');
+define('APP_SHORT_NAME', 'SDN 1 Nusantara');
+define('APP_TAGLINE', 'Berprestasi, Berkarakter, Berbudaya');
+define('APP_EMAIL', 'info@sdn1nusantara.sch.id');
+define('APP_PHONE', '(021) 1234-5678');
+define('APP_ADDRESS', 'Jl. Pendidikan No. 123, Kec. Nusantara, Kota Nusantara 12345');
 
-// --- Session ---
-if (session_status() === PHP_SESSION_NONE) {
-    session_start([
-        'cookie_httponly' => true,
-        'cookie_samesite' => 'Lax',
-    ]);
+/* =========================================================
+ | 3. KONFIGURASI DATABASE (PDO / MySQL)
+ * ========================================================= */
+define('DB_HOST', getenv('DB_HOST') ?: '127.0.0.1');
+define('DB_PORT', getenv('DB_PORT') ?: '3306');
+define('DB_NAME', getenv('DB_NAME') ?: 'sekolah');
+define('DB_USER', getenv('DB_USER') ?: 'root');
+define('DB_PASS', getenv('DB_PASS') !== false ? getenv('DB_PASS') : '');
+define('DB_CHARSET', 'utf8mb4');
+
+/* =========================================================
+ | 4. BASE URL
+ | Dihitung otomatis agar dapat berjalan di root domain
+ | maupun di sub-folder (mis. http://localhost/sekolah).
+ * ========================================================= */
+if (!defined('BASE_URL')) {
+    $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+    $host   = $_SERVER['HTTP_HOST'] ?? 'localhost';
+
+    $scriptName = str_replace('\\', '/', $_SERVER['SCRIPT_NAME'] ?? '/index.php');
+    $dir        = rtrim(str_replace('\\', '/', dirname($scriptName)), '/');
+
+    // Jika file dijalankan dari dalam folder /admin, naik satu level.
+    $dir = preg_replace('#/admin$#', '', $dir);
+    // Jika file dijalankan dari dalam folder /includes, naik satu level.
+    $dir = preg_replace('#/includes$#', '', $dir);
+
+    define('BASE_URL', $scheme . '://' . $host . $dir);
 }
 
 /* =========================================================
-   KONEKSI DATABASE (PDO)
-   ========================================================= */
-
-function db(): PDO
-{
-    static $pdo = null;
-
-    if ($pdo === null) {
-        $dsn = 'mysql:host=' . DB_HOST . ';port=' . DB_PORT . ';dbname=' . DB_NAME . ';charset=' . DB_CHARSET;
-        try {
-            $pdo = new PDO($dsn, DB_USER, DB_PASS, [
-                PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
-                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-                PDO::ATTR_EMULATE_PREPARES   => false,
-            ]);
-        } catch (PDOException $e) {
-            error_log('[DB] ' . $e->getMessage());
-            http_response_code(500);
-            exit('Koneksi database gagal. Silakan periksa konfigurasi pada <code>config/config.php</code>.');
-        }
-    }
-
-    return $pdo;
-}
-
-function fetch_all(string $sql, array $params = []): array
-{
-    $stmt = db()->prepare($sql);
-    $stmt->execute($params);
-    return $stmt->fetchAll();
-}
-
-function fetch_one(string $sql, array $params = []): ?array
-{
-    $stmt = db()->prepare($sql);
-    $stmt->execute($params);
-    $row = $stmt->fetch();
-    return $row === false ? null : $row;
-}
-
-function execute_sql(string $sql, array $params = []): bool
-{
-    $stmt = db()->prepare($sql);
-    return $stmt->execute($params);
-}
+ | 5. PATH & UPLOAD
+ * ========================================================= */
+define('ROOT_PATH', dirname(__DIR__));
+define('UPLOAD_PATH', ROOT_PATH . '/assets/uploads');
+define('UPLOAD_URL', BASE_URL . '/assets/uploads');
+define('UPLOAD_MAX_BYTES', 2 * 1024 * 1024); // 2 MB
+define('UPLOAD_ALLOWED_EXT', ['jpg', 'jpeg', 'png', 'webp', 'gif']);
+define('UPLOAD_ALLOWED_MIME', ['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
 
 /* =========================================================
-   HELPER UMUM
-   ========================================================= */
-
-function e($value): string
-{
-    return htmlspecialchars((string) $value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
-}
-
-function url(string $path = ''): string
-{
-    return BASE_URL . '/' . ltrim($path, '/');
-}
-
-function asset(string $path): string
-{
-   
+ | 6. PAGINATION
+ * ========================================================= */
+define('PER_PAGE_BERITA', 6);
+define('PER_PAGE_ADMIN', 10);
