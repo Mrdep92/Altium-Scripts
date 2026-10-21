@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  validate-script:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Validate required files exist
+        run: |
+          test -f Scripts/MainUnit.pas
+          test -f Scripts/Utils.pas
+          test -f Scripts/Project.PrjScript
+
+      - name: Validate PrjScript references both units
+        run: |
+          grep -q 'MainUnit.pas' Scripts/Project.PrjScript
+          grep -q 'Utils.pas'     Scripts/Project.PrjScript
+
+      - name: Validate entry point Run exists
+        run: |
+          grep -qiE '^[[:space:]]*Procedure[[:space:]]+Run[[:space:]]*;' Scripts/MainUnit.pas
+
+      - name: Validate DelphiScript syntax (Begin

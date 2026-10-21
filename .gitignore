@@ -1,0 +1,26 @@
+# ---- Altium Designer ----
+*.~*
+*.bak
+*.ddb
+*.PrjPcbStructure
+*.OutJob.log
+*.SchDocPreview
+*.PcbDocPreview
+*.PrjPcbStructure
+*.PCBPreview
+
+# Folder histori & output
+History/
+__history/
+Project Outputs/
+Project Logs for */
+Backup of */
+
+# ---- OS / Editor ----
+Thumbs.db
+desktop.ini
+.DS_Store
+.vscode/
+.idea/
+*.swp
+*~
